@@ -33,59 +33,96 @@ public class EmailController implements Serializable {
 	}
 
 	@Inject
-	public EmailController(Result result, EmailContainer emailContainer,
-			Environment ambiente) {
+	public EmailController(Result result, EmailContainer emailContainer, Environment ambiente) {
 		this.result = result;
 		this.emailContainer = emailContainer;
 		this.ambiente = ambiente;
 	}
 
 	@Post("/generico")
-	public void enviarEmail(String assunto, String destinatario,
-			String comCopia, String conteudo) {
+	public void enviarEmailGenerico(String assunto, String destinatario, String comCopia, String conteudo) {
 		try {
-			Email email = this.emailContainer.montarEmail(assunto,
-					destinatario, conteudo);
-			if (comCopia != null) {
-				email.addCc(comCopia);
-			}
-			this.emailContainer.enviarEmail(email);
-			logarEnvio(assunto, destinatario, comCopia, conteudo);
-			result.use(Results.json()).from("ok", "Sucesso no envio do e-mail");
-
+			enviarEmail(assunto, destinatario, comCopia, conteudo);
 		} catch (EmailException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			result.use(Results.http()).sendError(500,
-					"Falha no envio do e-mail: " + e.getMessage());
+			falhaEnvio(assunto, comCopia, conteudo, destinatario, e);
 		}
 	}
 
 	@Post("/emergencia-falta-gas")
-	public void enviarEmail(String emailCliente, String conteudo) {
+	public void enviarEmailEmergenciaFaltaGas(String emailCliente, String conteudo) {
+		String destinatario = ambiente.get("vraptor.simplemail.main.from");
 		try {
-			String destinatario = ambiente.get("vraptor.simplemail.main.from");
-			Email email = this.emailContainer.montarEmail(
-					Assuntos.EMERGENCIA_FALTA_GAS, destinatario, conteudo);
-			email.addCc(emailCliente);
-			this.emailContainer.enviarEmail(email);
-			logarEnvio(Assuntos.EMERGENCIA_FALTA_GAS, destinatario,
-					emailCliente, conteudo);
-			result.use(Results.json()).from("ok", "Sucesso no envio do e-mail");
+			enviarEmail(Assuntos.EMERGENCIA_FALTA_GAS, destinatario, emailCliente, conteudo);
+
 		} catch (EmailException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			falhaEnvio(Assuntos.EMERGENCIA_FALTA_GAS, emailCliente, conteudo, destinatario, e);
 		}
 	}
 
-	private void logarEnvio(String assunto, String destinatario,
-			String comCopia, String conteudo) {
-		log.info("Sucesso no envio do e-mail para o destinatário: "
-				+ destinatario);
+	private void enviarEmail(String assunto, String destinatario, String comCopia, String conteudo)
+			throws EmailException {
+		validarConteudoEmail(conteudo);
+		validarAssuntoEmail(assunto);
+		validarDestinatarioEmail(destinatario);
+
+		Email email = this.emailContainer.montarEmail(assunto, destinatario, conteudo);
+		adicionarCopia(email, comCopia);
+
+		this.emailContainer.enviarEmail(email);
+		sucessoEnvio(assunto, comCopia, conteudo, destinatario);
+	}
+
+	private void adicionarCopia(Email email, String comCopia) throws EmailException {
+		if (comCopia != null) {
+			email.addCc(comCopia);
+		}
+	}
+
+	private void validarConteudoEmail(String conteudo) throws EmailException {
+		if (conteudo == null || conteudo.isEmpty()) {
+			throw new EmailException("conteúdo do e-mail não foi preenchido ou foi passando de forma errada");
+		}
+	}
+	
+	private void validarDestinatarioEmail(String destinatario) throws EmailException {
+		if (destinatario == null || destinatario.isEmpty()) {
+			throw new EmailException("destinatário do e-mail não foi preenchido ou foi passando de forma errada");
+		}
+	}
+
+	private void validarAssuntoEmail(String assunto) throws EmailException {
+		if (assunto == null || assunto.isEmpty()) {
+			throw new EmailException("assunto do e-mail não foi preenchido ou foi passando de forma errada");
+		}
+	}
+
+	private void falhaEnvio(String assunto, String comCopia, String conteudo, String destinatario,
+			EmailException erro) {
+		erro.printStackTrace();
+		logarFalhaEnvio(assunto, destinatario, comCopia, conteudo, erro.getMessage());
+		result.use(Results.http()).body("Falha no envio do e-mail: " + erro.getMessage()).setStatusCode(500);
+	}
+
+	private void sucessoEnvio(String assunto, String emailCliente, String conteudo, String destinatario) {
+		logarEnvio(assunto, destinatario, emailCliente, conteudo);
+		result.use(Results.json()).withoutRoot().from("Sucesso no envio do e-mail").serialize();
+	}
+
+	private void logarEnvio(String assunto, String destinatario, String comCopia, String conteudo) {
+		log.info("Sucesso no envio do e-mail para o destinatário: " + destinatario);
 		log.info("--- DETALHES ---");
 		log.info("Assunto: " + assunto);
 		log.info("Cópia: " + comCopia);
 		log.info("Contéudo: " + conteudo);
+	}
+
+	private void logarFalhaEnvio(String assunto, String destinatario, String comCopia, String conteudo, String erro) {
+		log.error("FALHA no envio do e-mail para o destinatário: " + destinatario);
+		log.error("--- DETALHES ---");
+		log.error("Assunto: " + assunto);
+		log.error("Cópia: " + comCopia);
+		log.error("Contéudo: " + conteudo);
+		log.error("ERRO: " + erro);
 	}
 
 }

@@ -15,12 +15,12 @@
 		<param name="maxBackupIndex" value="1000" />
 		<param name="file" value="C://api-email/envios/log.log" />
 		<layout class="org.apache.log4j.PatternLayout">
-			<param name="ConversionPattern" value="%d{dd-MM-yyyy HH:mm:ss} [%-5p %c{1}] %l - %m%n" />
+			<param name="ConversionPattern" value="%d{dd-MM-yyyy HH:mm:ss} [%-5p %c{1}] - %m%n" />
 		</layout>
 	</appender>
 
 	<category name="br.com.logique">
-		<priority value="ERROR, INFO" />
+		<priority value="ERROR,INFO" />
 		<appender-ref ref="console" />
 		<appender-ref ref="file" />
 	</category>

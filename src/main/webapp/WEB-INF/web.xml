@@ -24,6 +24,6 @@
 	</context-param>
 	<context-param>
 		<param-name>br.com.caelum.vraptor.environment</param-name>
-		<param-value>mail</param-value>
+		<param-value>testmail</param-value>
 	</context-param>	
 </web-app>

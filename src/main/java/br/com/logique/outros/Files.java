@@ -12,7 +12,7 @@ import br.com.caelum.vraptor.observer.upload.UploadedFile;
 @Controller
 public class Files {
 	
-	private static final String PASTA_UPLOAD = "c:\\upload_documentos\\";
+	private static final String PASTA_UPLOAD = "c:\\api-email\\anexos";
 	
 	private File fileSave;
 
@@ -28,6 +28,9 @@ public class Files {
 	public void save(UploadedFile file) {		
 		fileSave = new File(searchFile(), file.getFileName());
 		try {
+			if (!searchFile().exists())
+				fileSave.mkdir();
+				
 			IOUtils.copyLarge(file.getFile(), new FileOutputStream(fileSave));
 		} catch (IOException e) {
 			e.printStackTrace();

@@ -1,5 +1,6 @@
 package br.com.logique.controller;
 
+import java.io.File;
 import java.io.Serializable;
 
 import javax.inject.Inject;
@@ -93,11 +94,11 @@ public class EmailController implements Serializable {
 	public void enviar(String assunto, String destinatario, String comCopia, String conteudo, UploadedFile anexo) {
 		try {
 			
-			fileUpload.save(anexo);
+			File anexoFile = fileUpload.save(anexo);
 			String caminhoArquivo = fileUpload.getPath();
 			String nomeArquivo = fileUpload.getNameFile();
 			
-			enviarEmailComAnexo(assunto, destinatario, comCopia, conteudo, caminhoArquivo);
+			enviarEmailComAnexo(assunto, destinatario, comCopia, conteudo, anexoFile);
 		} catch (EmailException e) {
 			falhaEnvio(assunto, comCopia, conteudo, destinatario, e);
 		} catch (MessagingException e) {
@@ -117,7 +118,7 @@ public class EmailController implements Serializable {
 		sucessoEnvio(assunto, comCopia, conteudo, destinatario);
 	}
 	
-	private void enviarEmailComAnexo(String assunto, String destinatario, String comCopia, String conteudo, String anexo)
+	private void enviarEmailComAnexo(String assunto, String destinatario, String comCopia, String conteudo, File anexo)
 			throws EmailException, MessagingException {
 		validarTodosOsCampos(assunto, destinatario, conteudo);
 

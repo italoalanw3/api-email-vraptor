@@ -25,6 +25,7 @@ import javax.mail.internet.MimeMultipart;
 import org.apache.commons.mail.Email;
 import org.apache.commons.mail.EmailException;
 import org.apache.commons.mail.HtmlEmail;
+import org.apache.commons.mail.MultiPartEmail;
 import org.apache.commons.mail.SimpleEmail;
 
 import br.com.caelum.vraptor.environment.Environment;
@@ -90,6 +91,7 @@ public class EmailContainer {
 			email.addTo(destinatario);
 
 			MimeMultipart multipart = criarMimeMultipart(assunto, destinatario, corpoEmail);
+			// MimeMultipart multipart = new MimeMultipart();
 
 			for (File arquivo : arquivos) {
 				MimeBodyPart attachPart = new MimeBodyPart();
@@ -102,6 +104,7 @@ public class EmailContainer {
 
 			}
 
+			//email.setMsg(corpoEmail.toString());
 			email.setContent(multipart);
 			return email;
 		}
@@ -139,11 +142,15 @@ public class EmailContainer {
 
 		// creates message part
 		MimeBodyPart messageBodyPart = new MimeBodyPart();
-		messageBodyPart.setContent(corpoEmail.toString(), "text/html");
+		messageBodyPart.setContent(corpoEmail.toString(), "text/html; charset=utf-8");
 
 		// creates multi-part
-		MimeMultipart multipart = new MimeMultipart();
+		MimeMultipart multipart = new MimeMultipart("alternative");
 		multipart.addBodyPart(messageBodyPart);
+
+		msg.setContent(multipart);
+		msg.saveChanges();
+
 		return multipart;
 	}
 

@@ -19,7 +19,6 @@ import br.com.caelum.vraptor.Post;
 import br.com.caelum.vraptor.Result;
 import br.com.caelum.vraptor.observer.upload.UploadSizeLimit;
 import br.com.caelum.vraptor.observer.upload.UploadedFile;
-import br.com.caelum.vraptor.serialization.gson.WithRoot;
 import br.com.caelum.vraptor.serialization.gson.WithoutRoot;
 import br.com.caelum.vraptor.view.Results;
 import br.com.logique.controller.email.CorpoEmail;

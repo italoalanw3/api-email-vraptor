@@ -2,9 +2,9 @@ package br.com.logique.controller.email;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.PasswordAuthentication;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
 
 import javax.activation.DataHandler;
@@ -15,9 +15,8 @@ import javax.mail.Authenticator;
 import javax.mail.BodyPart;
 import javax.mail.Message;
 import javax.mail.MessagingException;
-import javax.mail.Multipart;
-import javax.mail.Part;
 import javax.mail.Session;
+import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
@@ -25,78 +24,42 @@ import javax.mail.internet.MimeMultipart;
 
 import org.apache.commons.mail.Email;
 import org.apache.commons.mail.EmailException;
+import org.apache.commons.mail.HtmlEmail;
 import org.apache.commons.mail.SimpleEmail;
 
-import br.com.caelum.vraptor.simplemail.Mailer;
+import br.com.caelum.vraptor.environment.Environment;
+import br.com.caelum.vraptor.simplemail.AsyncMailer;
 
 public class EmailContainer {
 
 	/** Mecanismo para envio de email */
-	private Mailer mailer;
+	private final AsyncMailer mailer;
+	private final Environment ambiente;
 
 	public EmailContainer() {
-		// TODO Auto-generated constructor stub
-		this(null);
+		this(null, null);
 	}
 
 	@Inject
-	public EmailContainer(Mailer mailer) {
-		// TODO Auto-generated constructor stub
+	public EmailContainer(AsyncMailer mailer, Environment ambiente) {
 		this.mailer = mailer;
+		this.ambiente = ambiente;
 	}
 
-	/**
-	 * Realiza montagem de um objeto email com base nos campos que compõem a
-	 * mensagem completa.
-	 * 
-	 * @param assunto
-	 * @param destinatario
-	 * @param mensagem
-	 * @return
-	 * @throws EmailException
-	 * @throws MessagingException
-	 */
-	public Email montarEmail(String assunto, String destinatario, String mensagem, File arquivo)
+	public Email montarEmail(String assunto, String destinatario, CorpoEmail corpoEmail, File arquivo)
 			throws EmailException, MessagingException {
-		Email email = new SimpleEmail();
 
+		Email email = new HtmlEmail();
 		if (arquivo == null) {
 			email.setSubject(assunto);
 			email.addTo(destinatario);
+			email.setMsg(corpoEmail.toString());
 			return email;
 		} else {
-			Properties properties = new Properties();
-			properties.put("mail.smtp.host", "smtp.gmail.com");
-			properties.put("mail.smtp.port", 587);
-			properties.put("mail.smtp.auth", "true");
-			properties.put("mail.smtp.starttls.enable", "true");
-			properties.put("mail.user", "copergasaplicativo@gmail.com");
-			properties.put("mail.password", "Copergás");
+			email.setSubject(assunto);
+			email.addTo(destinatario);
 
-			// creates a new session with an authenticator
-			Authenticator auth = new Authenticator() {
-				public javax.mail.PasswordAuthentication getPasswordAuthentication() {
-					return new javax.mail.PasswordAuthentication("copergasaplicativo@gmail.com", "Copergás");
-				}
-			};
-			Session session = Session.getInstance(properties, auth);
-
-			// creates a new e-mail message
-			Message msg = new MimeMessage(session);
-
-			msg.setFrom(new InternetAddress("copergasaplicativo@gmail.com"));
-			InternetAddress[] toAddresses = { new InternetAddress(destinatario) };
-			msg.setRecipients(Message.RecipientType.TO, toAddresses);
-			msg.setSubject(assunto);
-			msg.setSentDate(new Date());
-
-			// creates message part
-			MimeBodyPart messageBodyPart = new MimeBodyPart();
-			messageBodyPart.setContent(mensagem, "text/html");
-
-			// creates multi-part
-			MimeMultipart multipart = new MimeMultipart();
-			multipart.addBodyPart(messageBodyPart);
+			MimeMultipart multipart = criarMimeMultipart(assunto, destinatario, corpoEmail);
 
 			MimeBodyPart attachPart = new MimeBodyPart();
 
@@ -113,9 +76,79 @@ public class EmailContainer {
 
 	}
 
+	public Email montarEmailMultiAnexos(String assunto, String destinatario, CorpoEmail corpoEmail, List<File> arquivos)
+			throws EmailException, MessagingException {
+		Email email = new SimpleEmail();
+
+		if (arquivos == null || arquivos.isEmpty()) {
+			email.setSubject(assunto);
+			email.addTo(destinatario);
+			email.setMsg(corpoEmail.toString());
+			return email;
+		} else {
+			email.setSubject(assunto);
+			email.addTo(destinatario);
+
+			MimeMultipart multipart = criarMimeMultipart(assunto, destinatario, corpoEmail);
+
+			for (File arquivo : arquivos) {
+				MimeBodyPart attachPart = new MimeBodyPart();
+				try {
+					attachPart.attachFile(arquivo);
+					multipart.addBodyPart(attachPart);
+				} catch (IOException ex) {
+					ex.printStackTrace();
+				}
+
+			}
+
+			email.setContent(multipart);
+			return email;
+		}
+
+	}
+
+	private MimeMultipart criarMimeMultipart(String assunto, String destinatario, CorpoEmail corpoEmail)
+			throws MessagingException, AddressException {
+		Properties properties = new Properties();
+		final String usuarioEmail = ambiente.get("vraptor.simplemail.main.username", "copergasaplicativo@gmail.com");
+		final String senha = ambiente.get("vraptor.simplemail.main.password", "c0perg@s");
+		properties.put("mail.smtp.host", ambiente.get("vraptor.simplemail.main.server", "smtp.gmail.com"));
+		properties.put("mail.smtp.port", ambiente.get("vraptor.simplemail.main.port", "587"));
+		properties.put("mail.smtp.auth", ambiente.get("", "true"));
+		properties.put("mail.smtp.starttls.enable", ambiente.get("vraptor.simplemail.main.tls", "true"));
+		properties.put("mail.user", usuarioEmail);
+		properties.put("mail.password", senha);
+
+		// creates a new session with an authenticator
+		Authenticator auth = new Authenticator() {
+			public javax.mail.PasswordAuthentication getPasswordAuthentication() {
+				return new javax.mail.PasswordAuthentication(usuarioEmail, senha);
+			}
+		};
+		Session session = Session.getInstance(properties, auth);
+
+		// creates a new e-mail message
+		Message msg = new MimeMessage(session);
+
+		msg.setFrom(new InternetAddress(usuarioEmail));
+		InternetAddress[] toAddresses = { new InternetAddress(destinatario) };
+		msg.setRecipients(Message.RecipientType.TO, toAddresses);
+		msg.setSubject(assunto);
+		msg.setSentDate(new Date());
+
+		// creates message part
+		MimeBodyPart messageBodyPart = new MimeBodyPart();
+		messageBodyPart.setContent(corpoEmail.toString(), "text/html");
+
+		// creates multi-part
+		MimeMultipart multipart = new MimeMultipart();
+		multipart.addBodyPart(messageBodyPart);
+		return multipart;
+	}
+
 	public void enviarEmail(Email mail) throws EmailException {
-		mailer.send(mail);
-		// aMailer.asyncSend(mail);
+		mailer.asyncSend(mail);
 	}
 
 	public BodyPart anexarArquivo(String caminhoArquivo) throws MessagingException {

@@ -9,7 +9,6 @@ import org.apache.log4j.Logger;
 
 import br.com.caelum.vraptor.Controller;
 import br.com.caelum.vraptor.observer.upload.UploadedFile;
-import br.com.logique.controller.EmailController;
 
 @Controller
 public class Files {

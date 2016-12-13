@@ -4,7 +4,7 @@
 	<groupId>br.com.logique.apiemail</groupId>
 	<artifactId>api-email</artifactId>
 	<packaging>war</packaging>
-	<version>1.0.0</version>
+	<version>3.0.1-beta</version>
 	<name>api-email</name>
 	<url>http://maven.apache.org</url>
 

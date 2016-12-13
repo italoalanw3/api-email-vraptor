@@ -25,7 +25,6 @@ import javax.mail.internet.MimeMultipart;
 import org.apache.commons.mail.Email;
 import org.apache.commons.mail.EmailException;
 import org.apache.commons.mail.HtmlEmail;
-import org.apache.commons.mail.MultiPartEmail;
 import org.apache.commons.mail.SimpleEmail;
 
 import br.com.caelum.vraptor.environment.Environment;
@@ -79,19 +78,19 @@ public class EmailContainer {
 
 	public Email montarEmailMultiAnexos(String assunto, String destinatario, CorpoEmail corpoEmail, List<File> arquivos)
 			throws EmailException, MessagingException {
-		Email email = new SimpleEmail();
 
 		if (arquivos == null || arquivos.isEmpty()) {
+			Email email = new HtmlEmail();
 			email.setSubject(assunto);
 			email.addTo(destinatario);
 			email.setMsg(corpoEmail.toString());
 			return email;
 		} else {
+			Email email = new SimpleEmail();
 			email.setSubject(assunto);
 			email.addTo(destinatario);
 
 			MimeMultipart multipart = criarMimeMultipart(assunto, destinatario, corpoEmail);
-			// MimeMultipart multipart = new MimeMultipart();
 
 			for (File arquivo : arquivos) {
 				MimeBodyPart attachPart = new MimeBodyPart();
@@ -104,7 +103,6 @@ public class EmailContainer {
 
 			}
 
-			//email.setMsg(corpoEmail.toString());
 			email.setContent(multipart);
 			return email;
 		}

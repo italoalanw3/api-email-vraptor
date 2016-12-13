@@ -12,8 +12,8 @@ public class CorpoEmail implements Serializable {
 	private String email;
 	private String numeroTelefoneCliente;
 	private String numeroTelefoneUsado;
-	private double latitude;
-	private double longitude;
+	private String latitude;
+	private String longitude;
 	private String informacaoEscritaPeloUsuario;
 	private String origem;
 
@@ -76,19 +76,19 @@ public class CorpoEmail implements Serializable {
 		this.numeroTelefoneUsado = numeroTelefoneUsado;
 	}
 
-	public double getLatitude() {
+	public String getLatitude() {
 		return latitude;
 	}
 
-	public void setLatitude(double latitude) {
+	public void setLatitude(String latitude) {
 		this.latitude = latitude;
 	}
 
-	public double getLongitude() {
+	public String getLongitude() {
 		return longitude;
 	}
 
-	public void setLongitude(double longitude) {
+	public void setLongitude(String longitude) {
 		this.longitude = longitude;
 	}
 
@@ -125,7 +125,7 @@ public class CorpoEmail implements Serializable {
 		inserirCampoHtml(retorno, "Número do telefone do cliente", getNumeroTelefoneCliente());
 		inserirCampoHtml(retorno, "Número do telefone usado", getNumeroTelefoneUsado());
 
-		if (getLatitude() != 0 || getLongitude() != 0) {
+		if (getInfo(getLatitude()) != "-" || getInfo(getLongitude()) != "-") {
 			retorno.append("<p class='paragrafo'><b>");
 			retorno.append("Localização do dispositivo: </b><br>");
 			retorno.append("&nbsp;&nbsp; latitude: " + getLatitude());
@@ -139,7 +139,8 @@ public class CorpoEmail implements Serializable {
 			inserirCampoHtml(retorno, "Localização do dispositivo", "não foi possível obter localização");
 		}
 
-		inserirCampoHtml(retorno, "Informação escrita pelo usuário", getInformacaoEscritaPeloUsuario());
+		inserirCampoHtml(retorno, "Informação escrita pelo usuário",
+				"<br>" + getInfo(getInformacaoEscritaPeloUsuario()));
 
 		inserirCampoHtml(retorno, "Origem", getOrigem());
 
@@ -150,8 +151,16 @@ public class CorpoEmail implements Serializable {
 		retorno.append("<p class='paragrafo'><b>");
 		retorno.append(label);
 		retorno.append(": </b>");
-		retorno.append(valor);
+		retorno.append(getInfo(valor));
 		retorno.append("</p>");
+	}
+
+	private String getInfo(String info) {
+		if (info == null || info.isEmpty()) {
+			return "-";
+		} else {
+			return info;
+		}
 	}
 
 }

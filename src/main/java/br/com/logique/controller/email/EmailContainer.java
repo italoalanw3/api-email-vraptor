@@ -32,7 +32,6 @@ import br.com.caelum.vraptor.simplemail.AsyncMailer;
 
 public class EmailContainer {
 
-	/** Mecanismo para envio de email */
 	private final AsyncMailer mailer;
 	private final Environment ambiente;
 
@@ -51,29 +50,39 @@ public class EmailContainer {
 
 		Email email = new HtmlEmail();
 		if (arquivo == null) {
-			email.setSubject(assunto);
-			email.addTo(destinatario);
-			email.setMsg(corpoEmail.toString());
-			return email;
+			return emailSemAnexo(assunto, destinatario, corpoEmail, email);
 		} else {
-			email.setSubject(assunto);
-			email.addTo(destinatario);
-
-			MimeMultipart multipart = criarMimeMultipart(assunto, destinatario, corpoEmail);
-
-			MimeBodyPart attachPart = new MimeBodyPart();
-
-			try {
-				attachPart.attachFile(arquivo);
-			} catch (IOException ex) {
-				ex.printStackTrace();
-			}
-
-			multipart.addBodyPart(attachPart);
-			email.setContent(multipart);
-			return email;
+			return emailComAnexo(assunto, destinatario, corpoEmail, arquivo, email);
 		}
 
+	}
+
+	private Email emailComAnexo(String assunto, String destinatario, CorpoEmail corpoEmail, File arquivo, Email email)
+			throws EmailException, MessagingException, AddressException {
+		email.setSubject(assunto);
+		email.addTo(destinatario);
+
+		MimeMultipart multipart = criarMimeMultipart(assunto, destinatario, corpoEmail);
+
+		MimeBodyPart attachPart = new MimeBodyPart();
+
+		try {
+			attachPart.attachFile(arquivo);
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		}
+
+		multipart.addBodyPart(attachPart);
+		email.setContent(multipart);
+		return email;
+	}
+
+	private Email emailSemAnexo(String assunto, String destinatario, CorpoEmail corpoEmail, Email email)
+			throws EmailException {
+		email.setSubject(assunto);
+		email.addTo(destinatario);
+		email.setMsg(corpoEmail.toString());
+		return email;
 	}
 
 	public Email montarEmailMultiAnexos(String assunto, String destinatario, CorpoEmail corpoEmail, List<File> arquivos)
@@ -81,68 +90,50 @@ public class EmailContainer {
 
 		if (arquivos == null || arquivos.isEmpty()) {
 			Email email = new HtmlEmail();
-			email.setSubject(assunto);
-			email.addTo(destinatario);
-			email.setMsg(corpoEmail.toString());
-			return email;
+			return emailSemAnexo(assunto, destinatario, corpoEmail, email);
 		} else {
-			Email email = new SimpleEmail();
-			email.setSubject(assunto);
-			email.addTo(destinatario);
-
-			MimeMultipart multipart = criarMimeMultipart(assunto, destinatario, corpoEmail);
-
-			for (File arquivo : arquivos) {
-				MimeBodyPart attachPart = new MimeBodyPart();
-				try {
-					attachPart.attachFile(arquivo);
-					multipart.addBodyPart(attachPart);
-				} catch (IOException ex) {
-					ex.printStackTrace();
-				}
-
-			}
-
-			email.setContent(multipart);
-			return email;
+			return emailComMultiAnexos(assunto, destinatario, corpoEmail, arquivos);
 		}
 
 	}
 
+	private Email emailComMultiAnexos(String assunto, String destinatario, CorpoEmail corpoEmail, List<File> arquivos)
+			throws EmailException, MessagingException, AddressException {
+		Email email = new SimpleEmail();
+		email.setSubject(assunto);
+		email.addTo(destinatario);
+
+		MimeMultipart multipart = criarMimeMultipart(assunto, destinatario, corpoEmail);
+
+		for (File arquivo : arquivos) {
+			MimeBodyPart attachPart = new MimeBodyPart();
+			try {
+				attachPart.attachFile(arquivo);
+				multipart.addBodyPart(attachPart);
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+
+		}
+
+		email.setContent(multipart);
+		return email;
+	}
+
 	private MimeMultipart criarMimeMultipart(String assunto, String destinatario, CorpoEmail corpoEmail)
 			throws MessagingException, AddressException {
-		Properties properties = new Properties();
 		final String usuarioEmail = ambiente.get("vraptor.simplemail.main.username", "copergasaplicativo@gmail.com");
 		final String senha = ambiente.get("vraptor.simplemail.main.password", "c0perg@s");
-		properties.put("mail.smtp.host", ambiente.get("vraptor.simplemail.main.server", "smtp.gmail.com"));
-		properties.put("mail.smtp.port", ambiente.get("vraptor.simplemail.main.port", "587"));
-		properties.put("mail.smtp.auth", ambiente.get("", "true"));
-		properties.put("mail.smtp.starttls.enable", ambiente.get("vraptor.simplemail.main.tls", "true"));
-		properties.put("mail.user", usuarioEmail);
-		properties.put("mail.password", senha);
 
-		// creates a new session with an authenticator
-		Authenticator auth = new Authenticator() {
-			public javax.mail.PasswordAuthentication getPasswordAuthentication() {
-				return new javax.mail.PasswordAuthentication(usuarioEmail, senha);
-			}
-		};
-		Session session = Session.getInstance(properties, auth);
+		Properties properties = carregarPropriedadesEmail(usuarioEmail, senha);
 
-		// creates a new e-mail message
-		Message msg = new MimeMessage(session);
+		Session session = criarSessionEmail(usuarioEmail, senha, properties);
 
-		msg.setFrom(new InternetAddress(usuarioEmail));
-		InternetAddress[] toAddresses = { new InternetAddress(destinatario) };
-		msg.setRecipients(Message.RecipientType.TO, toAddresses);
-		msg.setSubject(assunto);
-		msg.setSentDate(new Date());
+		Message msg = iniciarMessageEmail(assunto, destinatario, usuarioEmail, session);
 
-		// creates message part
 		MimeBodyPart messageBodyPart = new MimeBodyPart();
 		messageBodyPart.setContent(corpoEmail.toString(), "text/html; charset=utf-8");
 
-		// creates multi-part
 		MimeMultipart multipart = new MimeMultipart("alternative");
 		multipart.addBodyPart(messageBodyPart);
 
@@ -150,6 +141,39 @@ public class EmailContainer {
 		msg.saveChanges();
 
 		return multipart;
+	}
+
+	private Message iniciarMessageEmail(String assunto, String destinatario, final String usuarioEmail, Session session)
+			throws MessagingException, AddressException {
+		Message msg = new MimeMessage(session);
+
+		msg.setFrom(new InternetAddress(usuarioEmail));
+		InternetAddress[] toAddresses = { new InternetAddress(destinatario) };
+		msg.setRecipients(Message.RecipientType.TO, toAddresses);
+		msg.setSubject(assunto);
+		msg.setSentDate(new Date());
+		return msg;
+	}
+
+	private Session criarSessionEmail(final String usuarioEmail, final String senha, Properties properties) {
+		Authenticator auth = new Authenticator() {
+			public javax.mail.PasswordAuthentication getPasswordAuthentication() {
+				return new javax.mail.PasswordAuthentication(usuarioEmail, senha);
+			}
+		};
+		Session session = Session.getInstance(properties, auth);
+		return session;
+	}
+
+	private Properties carregarPropriedadesEmail(final String usuarioEmail, final String senha) {
+		Properties properties = new Properties();
+		properties.put("mail.smtp.host", ambiente.get("vraptor.simplemail.main.server", "smtp.gmail.com"));
+		properties.put("mail.smtp.port", ambiente.get("vraptor.simplemail.main.port", "587"));
+		properties.put("mail.smtp.auth", ambiente.get("", "true"));
+		properties.put("mail.smtp.starttls.enable", ambiente.get("vraptor.simplemail.main.tls", "true"));
+		properties.put("mail.user", usuarioEmail);
+		properties.put("mail.password", senha);
+		return properties;
 	}
 
 	public void enviarEmail(Email mail) throws EmailException {
